@@ -1,0 +1,6 @@
+build/*
+
+# Safetyyy
+cached/*
+**/credentials.json
+**/token.json
