@@ -6,6 +6,7 @@ import (
 
 	"ezdrive/auth"
 	"ezdrive/config"
+	"ezdrive/fs"
 
 	"github.com/urfave/cli/v2"
 )
@@ -13,6 +14,7 @@ import (
 func getCommands() []*cli.Command {
 	return []*cli.Command{
 		auth.AuthCommand(),
+		fs.FsCommand(),
 	}
 }
 
