@@ -11,7 +11,12 @@ import (
 
 	"github.com/pkg/browser"
 	"golang.org/x/oauth2"
+
+	_ "embed"
 )
+
+//go:embed redirect.html
+var redirectHTML string
 
 func isNicknameUnique(nickname string, credentialsPath string) (bool, error) {
 	dirEntries, err := os.ReadDir(credentialsPath)
@@ -38,7 +43,6 @@ func isNicknameUnique(nickname string, credentialsPath string) (bool, error) {
 
 // Request a token from the web, then returns the retrieved token.
 func promptTokenInWeb(config *oauth2.Config) (*oauth2.Token, error) {
-
 	// Create a simple HTTP server to get the token somehow...
 	ctx := context.Background()
 
@@ -46,19 +50,19 @@ func promptTokenInWeb(config *oauth2.Config) (*oauth2.Token, error) {
 		Addr: ":8000",
 	}
 
-	ch := make(chan string)
+	authCodeChan := make(chan string)
 
 	go func(srv *http.Server) {
 		log.Println("running temporary server")
 
-		// TODO: Proper web page lemao.
 		http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 			queryValues := r.URL.Query()
 			code := queryValues.Get("code")
 			w.Header().Add("Content-Type", "text/html")
-			fmt.Fprintf(w, "<h4>Your token is: %s</h4>", code)
+			redirectHTMLPrepared := strings.Replace(redirectHTML, "%token%", "code", 1)
+			fmt.Fprintf(w, redirectHTMLPrepared, code)
 			if code != "" {
-				ch <- code
+				authCodeChan <- code
 				fmt.Println("Token retrieved: " + code)
 			}
 		})
@@ -71,7 +75,7 @@ func promptTokenInWeb(config *oauth2.Config) (*oauth2.Token, error) {
 	fmt.Println("Opening URL: " + authURL)
 	browser.OpenURL(authURL)
 
-	authCode := <-ch
+	authCode := <-authCodeChan
 	srv.Shutdown(ctx)
 	tok, err := config.Exchange(ctx, authCode)
 	if err != nil {
